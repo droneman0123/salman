@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { L, MapContainer, TileLayer, Marker, useMap } from './MapImports';
 
 // Simple marker icon setup
@@ -22,9 +22,18 @@ function MapComponent({ position, onLocationSelect }) {
     }
   }, [map, marker, position]);
 
-  map.on('click', (e) => {
+  const handleMapClick = useCallback((e) => {
     onLocationSelect(e.latlng);
-  });
+  }, [onLocationSelect]);
+
+  useEffect(() => {
+    if (map) {
+      map.on('click', handleMapClick);
+      return () => {
+        map.off('click', handleMapClick);
+      };
+    }
+  }, [map, handleMapClick]);
 
   return null;
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 
 const OrderStatus = ({ orderId, onBack }) => {
@@ -29,24 +29,26 @@ const OrderStatus = ({ orderId, onBack }) => {
     }
   }, [orderId]);
 
-  const fetchOrder = async () => {
-    console.log('Fetching order details for:', orderId);
-    
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', orderId)
-      .single();
+  const fetchOrder = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single();
 
-    console.log('Fetch order response:', { data, error });
+      if (error) {
+        console.error('Error fetching order:', error);
+        return;
+      }
 
-    if (error) {
-      console.error('Error fetching order:', error);
-      setMessage('Error fetching order status');
-    } else {
-      setOrder(data);
+      if (data) {
+        setOrder(data);
+      }
+    } catch (error) {
+      console.error('Error:', error);
     }
-  };
+  }, [orderId]);
 
   useEffect(() => {
     fetchOrder();
