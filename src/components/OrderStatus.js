@@ -3,33 +3,13 @@ import { supabase } from '../services/supabase';
 
 const OrderStatus = ({ orderId, onBack }) => {
   const [order, setOrder] = useState(null);
-  const [otp, setOtp] = useState('');
   const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    if (orderId) {
-      console.log('Setting up subscription for order:', orderId);
-      
-      const subscription = supabase
-        .channel(`orders:id=eq.${orderId}`)
-        .on('UPDATE', payload => {
-          console.log('Order update received:', payload);
-          setOrder(payload.new);
-        })
-        .subscribe(status => {
-          console.log('Subscription status:', status);
-        });
-
-      fetchOrder();
-
-      return () => {
-        console.log('Cleaning up subscription');
-        supabase.removeSubscription(subscription);
-      };
-    }
-  }, [orderId]);
+  const [otp, setOtp] = useState('');
+  const [orderStatus, setOrderStatus] = useState('pending');
 
   const fetchOrder = useCallback(async () => {
+    if (!orderId) return;
+
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -39,14 +19,17 @@ const OrderStatus = ({ orderId, onBack }) => {
 
       if (error) {
         console.error('Error fetching order:', error);
+        setMessage('Error fetching order status');
         return;
       }
 
       if (data) {
         setOrder(data);
+        setOrderStatus(data.status);
       }
     } catch (error) {
       console.error('Error:', error);
+      setMessage('An unexpected error occurred');
     }
   }, [orderId]);
 
@@ -55,17 +38,33 @@ const OrderStatus = ({ orderId, onBack }) => {
   }, [fetchOrder]);
 
   const verifyOTP = async () => {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', orderId)
-      .eq('otp', otp)
-      .single();
+    if (!otp) {
+      setMessage('Please enter OTP');
+      return;
+    }
 
-    if (error || !data) {
-      setMessage('Invalid OTP');
-    } else {
-      setMessage('OTP verified successfully!');
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ status: 'delivered' })
+        .eq('id', orderId)
+        .eq('otp', otp)
+        .select();
+
+      if (error) {
+        setMessage('Invalid OTP');
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setOrderStatus('delivered');
+        setMessage('Order delivered successfully!');
+      } else {
+        setMessage('Invalid OTP');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setMessage('An unexpected error occurred');
     }
   };
 
@@ -74,51 +73,50 @@ const OrderStatus = ({ orderId, onBack }) => {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto p-4 sm:p-6 bg-white rounded-lg shadow-lg">
-      <div className="flex justify-between items-center mb-4 sm:mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold">Order Status</h2>
-        <button 
-          onClick={onBack}
-          className="text-blue-500 hover:text-blue-700 text-sm sm:text-base"
-        >
-          ← Back
-        </button>
-      </div>
-      <div className="space-y-2 mb-4">
-        <p className="text-sm sm:text-base">
-          Status: <span className="font-bold">{order.status}</span>
-        </p>
-        <p className="text-sm sm:text-base">
-          Item: <span className="font-medium">{order.item}</span>
-        </p>
-      </div>
+    <div className="p-4">
+      <button onClick={onBack} className="mb-4 text-blue-500">
+        ← Back to Orders
+      </button>
       
-      {order.status === 'in-transit' && (
-        <div className="space-y-2">
-          <label className="block text-gray-700 text-sm font-medium mb-1">Enter OTP</label>
-          <input
-            type="text"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            className="w-full p-2 text-base border rounded focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter OTP"
-          />
-          <button
-            onClick={verifyOTP}
-            className="w-full py-2 px-4 text-white bg-blue-500 hover:bg-blue-600 rounded transition duration-200"
-          >
-            Verify OTP
-          </button>
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-2xl font-bold mb-4">Order Status</h2>
+        
+        <div className="mb-4">
+          <p>Order ID: {orderId}</p>
+          <p>Status: {orderStatus}</p>
+          <p>Total Amount: ₹{order.price}</p>
         </div>
-      )}
-      
-      {message && (
-        <div className="mt-4 p-3 text-sm text-center rounded bg-gray-50">
-          {message}
-        </div>
-      )}
+
+        {orderStatus === 'out_for_delivery' && (
+          <div className="mb-4">
+            <input
+              type="text"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="Enter OTP"
+              className="border p-2 rounded mr-2"
+            />
+            <button
+              onClick={verifyOTP}
+              className="bg-blue-500 text-white px-4 py-2 rounded"
+            >
+              Verify OTP
+            </button>
+          </div>
+        )}
+
+        {message && (
+          <div className={`mt-4 p-2 rounded ${
+            message.includes('Error') || message.includes('Invalid')
+              ? 'bg-red-100 text-red-700'
+              : 'bg-green-100 text-green-700'
+          }`}>
+            {message}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default OrderStatus; 
+export default OrderStatus;

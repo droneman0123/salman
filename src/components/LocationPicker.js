@@ -1,26 +1,33 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { L, MapContainer, TileLayer, Marker, useMap } from './MapImports';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import L from 'leaflet';
 
-// Simple marker icon setup
-const icon = L.icon({
-  iconUrl: "https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+const defaultIcon = L.icon({
+  iconUrl: '/marker-icon.png',
   iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+  iconAnchor: [12, 41]
 });
 
 function MapComponent({ position, onLocationSelect }) {
   const map = useMap();
-  const marker = Marker;
+  const markerRef = React.useRef(null);
 
   useEffect(() => {
+    if (!markerRef.current) {
+      markerRef.current = L.marker(position, { icon: defaultIcon }).addTo(map);
+    }
+    
     if (map && position) {
       map.setView(position, 13);
-      marker.setLatLng(position);
+      markerRef.current.setLatLng(position);
     }
-  }, [map, marker, position]);
+
+    return () => {
+      if (markerRef.current) {
+        markerRef.current.remove();
+      }
+    };
+  }, [map, position]);
 
   const handleMapClick = useCallback((e) => {
     onLocationSelect(e.latlng);
@@ -38,83 +45,27 @@ function MapComponent({ position, onLocationSelect }) {
   return null;
 }
 
-const LocationPicker = ({ onLocationSelect, initialLocation }) => {
-  const [position, setPosition] = useState(initialLocation);
-  const [loading, setLoading] = useState(!initialLocation);
-  const [error, setError] = useState(null);
+function LocationPicker({ onLocationSelect, initialPosition }) {
+  const [position, setPosition] = useState(initialPosition || [12.9716, 77.5946]);
 
-  useEffect(() => {
-    if (initialLocation) {
-      setPosition(initialLocation);
-      setLoading(false);
-      return;
-    }
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const newPos = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          };
-          setPosition(newPos);
-          onLocationSelect(newPos);
-          setLoading(false);
-        },
-        (err) => {
-          setError(err.message);
-          setLoading(false);
-          // Default to a fallback location
-          const defaultPos = { lat: 51.505, lng: -0.09 };
-          setPosition(defaultPos);
-          onLocationSelect(defaultPos);
-        }
-      );
-    } else {
-      setError("Geolocation is not supported by your browser");
-      setLoading(false);
-      // Default to a fallback location
-      const defaultPos = { lat: 51.505, lng: -0.09 };
-      setPosition(defaultPos);
-      onLocationSelect(defaultPos);
-    }
-  }, [onLocationSelect, initialLocation]);
-
-  useEffect(() => {
-    if (initialLocation && initialLocation !== position) {
-      setPosition(initialLocation);
-    }
-  }, [initialLocation]);
-
-  if (loading) {
-    return <div className="text-center py-4">Loading map...</div>;
-  }
-
-  if (error) {
-    return <div className="text-red-500 text-center py-4">{error}</div>;
-  }
+  const handleLocationSelect = (latlng) => {
+    setPosition([latlng.lat, latlng.lng]);
+    onLocationSelect([latlng.lat, latlng.lng]);
+  };
 
   return (
-    <div className="h-[400px] w-full rounded-lg overflow-hidden shadow-lg">
-      <MapContainer
-        center={position || [51.505, -0.09]}
-        zoom={13}
-        style={{ height: "100%", width: "100%" }}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
-        {position && (
-          <Marker position={position} icon={icon} />
-        )}
-        <MapComponent position={position} onLocationSelect={(pos) => {
-          setPosition(pos);
-          onLocationSelect(pos);
-        }} />
-      </MapContainer>
-    </div>
+    <MapContainer
+      center={position}
+      zoom={13}
+      style={{ height: '400px', width: '100%' }}
+    >
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      />
+      <MapComponent position={position} onLocationSelect={handleLocationSelect} />
+    </MapContainer>
   );
-};
+}
 
 export default LocationPicker;
