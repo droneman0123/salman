@@ -48,6 +48,10 @@ const OrderStatus = ({ orderId, onBack }) => {
     }
   };
 
+  useEffect(() => {
+    fetchOrder();
+  }, [fetchOrder]);
+
   const verifyOTP = async () => {
     const { data, error } = await supabase
       .from('orders')

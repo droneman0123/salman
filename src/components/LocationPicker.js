@@ -13,12 +13,14 @@ const icon = L.icon({
 
 function MapComponent({ position, onLocationSelect }) {
   const map = useMap();
+  const marker = Marker;
 
   useEffect(() => {
-    if (position) {
+    if (map && position) {
       map.setView(position, 13);
+      marker.setLatLng(position);
     }
-  }, [position, map]);
+  }, [map, marker, position]);
 
   map.on('click', (e) => {
     onLocationSelect(e.latlng);
