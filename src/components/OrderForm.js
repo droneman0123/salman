@@ -13,15 +13,25 @@ const OrderForm = ({ onOrderPlaced, selectedProduct, onBack }) => {
 
   const handleAddressSubmit = (addressData) => {
     setAddress(addressData);
+    setShowMap(true);
     if (addressData.coordinates) {
-      setLocation(addressData.coordinates);
-      setShowMap(true);
+      setLocation([addressData.coordinates.lat, addressData.coordinates.lng]);
     }
+  };
+
+  const handleLocationSelect = (newLocation) => {
+    setLocation(newLocation);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!location || !address) {
+      setMessage('Please select both address and location');
+      return;
+    }
+
     setLoading(true);
+    setMessage('');
     
     try {
       const orderData = {
@@ -29,7 +39,7 @@ const OrderForm = ({ onOrderPlaced, selectedProduct, onBack }) => {
         item: selectedProduct.name,
         price: selectedProduct.price,
         delivery_address: address.formattedAddress,
-        location: location ? `POINT(${location[0]} ${location[1]})` : null
+        location: location ? `POINT(${location[1]} ${location[0]})` : null
       };
 
       const data = await createOrder(orderData);
@@ -51,6 +61,7 @@ const OrderForm = ({ onOrderPlaced, selectedProduct, onBack }) => {
             <button
               onClick={onBack}
               className="text-blue-500 hover:text-blue-700 flex items-center"
+              type="button"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -68,23 +79,24 @@ const OrderForm = ({ onOrderPlaced, selectedProduct, onBack }) => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium mb-2">Delivery Address</h3>
               <AddressInput onSubmit={handleAddressSubmit} />
             </div>
 
             {showMap && (
-              <div className="mb-6">
-                <h3 className="font-semibold mb-2">Confirm Delivery Location</h3>
+              <div>
+                <h3 className="text-lg font-medium mb-2">Confirm Delivery Location</h3>
                 <LocationPicker
-                  onLocationSelect={setLocation}
+                  onLocationSelect={handleLocationSelect}
                   initialPosition={location}
                 />
               </div>
             )}
 
             {message && (
-              <div className={`mb-4 p-3 rounded ${
+              <div className={`p-3 rounded ${
                 message.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
               }`}>
                 {message}

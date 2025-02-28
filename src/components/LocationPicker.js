@@ -6,9 +6,9 @@ import 'leaflet/dist/leaflet.css';
 // Fix for default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
 function MapComponent({ position, onLocationSelect }) {
@@ -21,7 +21,7 @@ function MapComponent({ position, onLocationSelect }) {
   }, [map, position]);
 
   const handleMapClick = useCallback((e) => {
-    onLocationSelect(e.latlng);
+    onLocationSelect([e.latlng.lat, e.latlng.lng]);
   }, [onLocationSelect]);
 
   useEffect(() => {
@@ -33,53 +33,64 @@ function MapComponent({ position, onLocationSelect }) {
     }
   }, [map, handleMapClick]);
 
-  return (
-    <Marker position={position} />
-  );
+  return position ? <Marker position={position} /> : null;
 }
 
 function LocationPicker({ onLocationSelect, initialPosition }) {
   const [position, setPosition] = useState(initialPosition || [12.9716, 77.5946]); // Bangalore coordinates
+  const [mapKey, setMapKey] = useState(0); // Add key to force re-render
 
-  const handleLocationSelect = (latlng) => {
-    setPosition([latlng.lat, latlng.lng]);
-    onLocationSelect([latlng.lat, latlng.lng]);
+  const handleLocationSelect = (newPosition) => {
+    setPosition(newPosition);
+    onLocationSelect(newPosition);
   };
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newPosition = [position.coords.latitude, position.coords.longitude];
+        (location) => {
+          const newPosition = [location.coords.latitude, location.coords.longitude];
           setPosition(newPosition);
           onLocationSelect(newPosition);
+          setMapKey(prev => prev + 1); // Force map re-render with new position
         },
         (error) => {
           console.error('Error getting location:', error);
+          alert('Could not get your location. Please select manually.');
         }
       );
+    } else {
+      alert('Geolocation is not supported by your browser');
     }
   };
 
   return (
-    <div>
+    <div className="space-y-4">
       <button 
         onClick={getCurrentLocation}
-        className="mb-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+        type="button"
       >
         Use Current Location
       </button>
-      <MapContainer
-        center={position}
-        zoom={13}
-        style={{ height: '400px', width: '100%' }}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
-        <MapComponent position={position} onLocationSelect={handleLocationSelect} />
-      </MapContainer>
+      <div className="h-[400px] w-full rounded-lg overflow-hidden border border-gray-300">
+        <MapContainer
+          key={mapKey}
+          center={position}
+          zoom={13}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={false}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <MapComponent position={position} onLocationSelect={handleLocationSelect} />
+        </MapContainer>
+      </div>
+      <p className="text-sm text-gray-600">
+        Click on the map to select delivery location
+      </p>
     </div>
   );
 }
