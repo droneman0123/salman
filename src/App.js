@@ -28,13 +28,18 @@ function App() {
   }, []);
 
   const handleBack = () => {
-    setOrderId(null);
+    if (orderId) {
+      setOrderId(null);
+    } else if (selectedProduct) {
+      setSelectedProduct(null);
+    }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setOrderId(null);
+    setSelectedProduct(null);
   };
 
   if (!user) {
@@ -52,32 +57,37 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 px-4 py-6">
-      <div className="w-full max-w-6xl mx-auto">
-        <div className="mb-6 flex justify-between items-center">
-          <span className="text-sm text-gray-600">Welcome, {user.email}</span>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-red-500 hover:text-red-700"
-          >
-            Logout
-          </button>
+    <div className="min-h-screen bg-gray-100">
+      <nav className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl font-semibold text-gray-800">Drone Delivery</h1>
+            <button
+              onClick={handleLogout}
+              className="text-gray-600 hover:text-gray-800"
+            >
+              Logout
+            </button>
+          </div>
         </div>
+      </nav>
 
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {orderId ? (
           <OrderStatus orderId={orderId} onBack={handleBack} />
         ) : selectedProduct ? (
-          <OrderForm 
-            onOrderPlaced={setOrderId} 
+          <OrderForm
             selectedProduct={selectedProduct}
+            onOrderPlaced={setOrderId}
+            onBack={handleBack}
           />
         ) : (
-          <ProductList 
-            products={products} 
-            onSelectProduct={setSelectedProduct}
+          <ProductList
+            products={products}
+            onProductSelect={setSelectedProduct}
           />
         )}
-      </div>
+      </main>
     </div>
   );
 }
