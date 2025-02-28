@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import CategoryList from './CategoryList';
 import { formatINR } from '../utils/currency';
 
-const ProductList = ({ products, onSelectProduct }) => {
+const ProductList = ({ products, onProductSelect }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   const filteredProducts = selectedCategory
@@ -41,7 +41,7 @@ const ProductList = ({ products, onSelectProduct }) => {
                   {formatINR(product.price)}
                 </span>
                 <button
-                  onClick={() => onSelectProduct(product)}
+                  onClick={() => onProductSelect(product)}
                   className="bg-blue-500 text-white text-xs sm:text-sm px-3 py-1 rounded hover:bg-blue-600 transition-colors"
                 >
                   Order
