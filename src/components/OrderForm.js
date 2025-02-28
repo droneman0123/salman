@@ -39,15 +39,22 @@ const OrderForm = ({ onOrderPlaced, selectedProduct, onBack }) => {
         item: selectedProduct.name,
         price: selectedProduct.price,
         delivery_address: address.formattedAddress,
-        location: location ? `POINT(${location[1]} ${location[0]})` : null
+        location: `POINT(${location[1]} ${location[0]})`
       };
 
+      console.log('Submitting order:', orderData);
       const data = await createOrder(orderData);
+      console.log('Order created:', data);
+      
       setMessage('Order placed successfully!');
-      onOrderPlaced(data.id);
+      if (data && data.id) {
+        onOrderPlaced(data.id);
+      } else {
+        throw new Error('No order ID received');
+      }
     } catch (error) {
       console.error('Order submission error:', error);
-      setMessage('Error placing order: ' + error.message);
+      setMessage('Error placing order: ' + (error.message || 'Please try again'));
     } finally {
       setLoading(false);
     }

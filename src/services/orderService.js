@@ -1,8 +1,11 @@
 import { supabase } from './supabase';
 
 export const createOrder = async (orderData) => {
-  const { user } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
+
+  // Generate a random 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   const { data, error } = await supabase
     .from('orders')
@@ -15,18 +18,21 @@ export const createOrder = async (orderData) => {
         status: 'pending',
         delivery_address: orderData.delivery_address,
         location: orderData.location,
-        address_id: orderData.address_id
+        otp: otp
       }
     ])
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error creating order:', error);
+    throw new Error(error.message);
+  }
   return data;
 };
 
 export const getUserOrders = async () => {
-  const { user } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
   const { data, error } = await supabase
@@ -48,6 +54,9 @@ export const getUserOrders = async () => {
 };
 
 export const getOrderById = async (orderId) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
   const { data, error } = await supabase
     .from('orders')
     .select(`
